@@ -1,7 +1,22 @@
 """서버 통신 (UI와 분리). 모든 호출은 블로킹이므로 UI 스레드 밖에서 호출할 것."""
 from __future__ import annotations
 
+import socket
+from urllib.parse import urlsplit, urlunsplit
+
 import requests
+import urllib3.util.connection as _u3conn
+
+# 서버는 IPv4로만 열려 있다. 윈도우에서 IPv6를 먼저 시도하다 몇 초씩 지연되는 것을 막는다.
+_u3conn.allowed_gai_family = lambda: socket.AF_INET
+
+
+def _fix_url(url: str) -> str:
+    parts = urlsplit(url.strip())
+    if parts.hostname and parts.hostname.lower() == "localhost":
+        netloc = "127.0.0.1" + (f":{parts.port}" if parts.port else "")
+        parts = parts._replace(netloc=netloc)
+    return urlunsplit(parts).rstrip("/")
 
 
 class ApiError(Exception):
@@ -14,9 +29,10 @@ class Offline(Exception):
 
 class Api:
     def __init__(self, base_url: str, timeout: float = 4.0):
-        self.base = base_url.rstrip("/")
+        self.base = _fix_url(base_url)
         self.timeout = timeout
         self.s = requests.Session()
+        self.s.trust_env = False   # 시스템 프록시 설정 조회로 인한 지연 방지(내부망 직접 접속)
 
     def _call(self, method: str, path: str, **kw):
         try:

@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from PySide6.QtCore import QDateTime, QTime, Qt
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QDateTimeEdit, QDialog, QFormLayout,
+from PySide6.QtWidgets import (QAbstractSpinBox, QCheckBox, QComboBox, QDateTimeEdit, QDialog, QFormLayout,
                                QHBoxLayout, QLabel, QLineEdit, QPlainTextEdit, QPushButton,
                                QTimeEdit, QVBoxLayout, QWidget)
 
@@ -45,6 +45,7 @@ class TaskDialog(QDialog):
         self.reset_wd.setCurrentIndex(t.get("reset_weekday") if t.get("reset_weekday") is not None else 0)
         self.reset_time = QTimeEdit(_time(t.get("reset_time")))
         self.reset_time.setDisplayFormat("HH:mm")
+        self.reset_time.setButtonSymbols(QAbstractSpinBox.NoButtons)
 
         self.use_due = QCheckBox("마감 시각 지정 (안 하면 다음 초기화 시점이 마감)")
         self.use_due.setChecked(bool(t.get("due_time")))
@@ -54,13 +55,14 @@ class TaskDialog(QDialog):
         self.due_wd.setCurrentIndex(t.get("due_weekday") if t.get("due_weekday") is not None else 0)
         self.due_time = QTimeEdit(_time(t.get("due_time"), "22:00"))
         self.due_time.setDisplayFormat("HH:mm")
+        self.due_time.setButtonSymbols(QAbstractSpinBox.NoButtons)
 
         # 일회성 옵션
         self.use_dt = QCheckBox("마감일 지정")
         due = pdt(t.get("due_at"))
         self.use_dt.setChecked(bool(due) or (not t and default_kind == "once"))
         base = due or now.replace(hour=23, minute=59, second=0, microsecond=0)
-        self.due_dt = QDateTimeEdit(QDateTime(base.year, base.month, base.day, base.hour, base.minute))
+        self.due_dt = QDateTimeEdit(QDateTime(base.year, base.month, base.day, base.hour, base.minute, 0))
         self.due_dt.setDisplayFormat("yyyy-MM-dd HH:mm")
         self.due_dt.setCalendarPopup(True)
 

@@ -17,6 +17,19 @@ COLORS = {
 ROW_HEIGHT = 58
 FONT_FAMILY = "Malgun Gothic"  # 윈도우 기본 한글 글꼴 (없으면 시스템 기본으로 대체됨)
 
+def build_qss(arrow_url: str) -> str:
+    return QSS + f"""
+QComboBox {{ padding-right: 28px; }}
+QComboBox::drop-down {{ border: none; width: 28px; background: transparent; }}
+QComboBox::down-arrow {{ image: url({arrow_url}); width: 12px; height: 12px; }}
+QDateTimeEdit {{ padding-right: 28px; }}
+QDateTimeEdit::drop-down {{ border: none; width: 28px; background: transparent; }}
+QDateTimeEdit::down-arrow {{ image: url({arrow_url}); width: 12px; height: 12px; }}
+QComboBox QAbstractItemView {{ background: {COLORS['card']}; border: 1px solid {COLORS['line']};
+    selection-background-color: {COLORS['accent']}; selection-color: white; outline: 0; }}
+"""
+
+
 QSS = f"""
 QMainWindow, QDialog {{ background: {COLORS['bg']}; }}
 QWidget {{ font-family: '{FONT_FAMILY}'; color: {COLORS['text']}; font-size: 13px; }}

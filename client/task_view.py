@@ -43,6 +43,27 @@ class TaskModel(QAbstractListModel):
         self.all = [prepare(t) for t in tasks]
         self._refilter()
 
+    # ---- 부분 갱신(서버 응답/낙관적 반영용): 전체 재조회 없이 한 건만 바꾼다
+    def _sort_key(self, t: dict):
+        order = {"pending": 0, "missed": 1, "done": 2}[t["status"]]
+        rem = (t["_due"] - self.now()).total_seconds() if (t["status"] == "pending" and t["_due"]) else float("inf")
+        return (order, rem, t["title"])
+
+    def upsert(self, t: dict):
+        t = prepare(dict(t))
+        for i, x in enumerate(self.all):
+            if x["id"] == t["id"]:
+                self.all[i] = t
+                break
+        else:
+            self.all.append(t)
+        self.all.sort(key=self._sort_key)
+        self._refilter()
+
+    def remove(self, task_id: int):
+        self.all = [x for x in self.all if x["id"] != task_id]
+        self._refilter()
+
     def set_filter(self, tab=None, text=None, only_pending=None):
         if tab is not None: self.tab = tab
         if text is not None: self.text = text.strip().lower()

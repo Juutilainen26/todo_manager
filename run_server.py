@@ -43,7 +43,7 @@ def main():
         print(f" 클라이언트 접속 주소 : http://{socket.gethostname()}:{args.port}")
     print(f" 데이터 파일 : {args.db}")
     print("=" * 56)
-    uvicorn.run(create_app(args.db), host=args.host, port=args.port, log_level="warning")
+    uvicorn.run(create_app(args.db), host=args.host, port=args.port, log_level="warning", timeout_keep_alive=120)
 
 
 if __name__ == "__main__":

@@ -247,13 +247,11 @@ class MainWindow(QMainWindow):
 
     def _on_list(self, res):
         self._busy = False
-        prev = {t["id"]: t for t in self.model.all}
         self.model.set_tasks(res["tasks"], res["server_now"])
         self.cache.save(res)
         if not self.online:
             self.online = True
         self.banner.hide()
-        self._notify_missed(prev)
         self._check_notifications()
         self._first_load = False
         self._update_status()
@@ -291,12 +289,17 @@ class MainWindow(QMainWindow):
         body = "\n".join("• " + n for n in names[:4]) + (f"\n… 외 {len(names) - 4}건" if len(names) > 4 else "")
         self.tray.showMessage(title, body, QSystemTrayIcon.Warning, 10000)
 
+    # 알림 단계: (구분, 남은 초 이하, 제목) -- 매일 할일은 알림 제외, 마감 초과 알림 없음
+    NOTIFY_LEVELS = [(1, 86400, "⏰ 마감 24시간 이내"), (3, 259200, "마감 3일 이내")]
+
     def _check_notifications(self):
         now = self.model.now()
-        hits: dict[int, list] = {10: [], 60: []}
+        hits: dict[int, list] = {lv: [] for lv, _, _ in self.NOTIFY_LEVELS}
         for t in self.model.pending_with_due():
+            if t["kind"] == "daily":
+                continue
             rem = (t["_due"] - now).total_seconds()
-            crossed = [lv for lv, th in ((10, 600), (60, 3600)) if rem <= th]
+            crossed = [lv for lv, th, _ in self.NOTIFY_LEVELS if rem <= th]
             if not crossed:
                 continue
             keys = [(t["id"], t["due_at"], lv) for lv in crossed]
@@ -304,18 +307,8 @@ class MainWindow(QMainWindow):
             self.notified.update(keys)
             if fresh and not self._first_load:
                 hits[crossed[0]].append(t)
-        self._notify("⏰ 마감 10분 이내", hits[10])
-        self._notify("마감 1시간 이내", hits[60])
-
-    def _notify_missed(self, prev: dict):
-        if self._first_load:
-            return
-        newly = []
-        for t in self.model.all:
-            old = prev.get(t["id"])
-            if t["status"] == "missed" and old and old["status"] == "pending" and old["due_at"] == t["due_at"]:
-                newly.append(t)
-        self._notify("❗ 마감 초과", newly)
+        for lv, _, title in self.NOTIFY_LEVELS:
+            self._notify(title, hits[lv])
 
     # ------------------------------------------------------------ 필터/탭
     def _on_tab(self, i):
@@ -333,13 +326,18 @@ class MainWindow(QMainWindow):
         if ix.isValid():
             fn(ix.data(Qt.UserRole + 1))
 
-    def _action(self, fn, ok_msg: str | None = None):
+    def _action(self, fn, on_ok=None, ok_msg: str | None = None):
+        """서버 호출을 백그라운드로 실행. 성공하면 on_ok(응답)으로 화면을 바로 갱신하고
+        뒤에서 전체 목록을 한 번 더 받아 맞춘다. 실패하면 되돌리기 위해 다시 조회한다."""
         if not self.api:
             return self.server_dialog()
 
-        def done(_):
+        def done(res):
+            if on_ok:
+                on_ok(res)
             if ok_msg:
                 self.flash(ok_msg, 2000)
+            self._update_status()
             self.refresh()
 
         def fail(e):
@@ -367,34 +365,41 @@ class MainWindow(QMainWindow):
             data |= {"kind": "once"}
         self.quick.clear()
         api = self.api
-        self._action(lambda: api.create(data), "추가했어요")
+        self._action(lambda: api.create(data), self.model.upsert, "추가했어요")
 
     def add_dialog(self):
         d = TaskDialog(self, now=self.model.now(), default_kind="daily")
         if d.exec():
             data, api = d.payload(), self.api
-            self._action(lambda: api.create(data), "추가했어요")
+            self._action(lambda: api.create(data), self.model.upsert, "추가했어요")
 
     def edit_dialog(self, t: dict):
         d = TaskDialog(self, task=t, now=self.model.now())
         if d.exec():
             data, api, tid = d.payload(), self.api, t["id"]
-            self._action(lambda: api.update(tid, data), "수정했어요")
+            self._action(lambda: api.update(tid, data), self.model.upsert, "수정했어요")
 
     def toggle(self, t: dict):
         api, tid = self.api, t["id"]
-        if t["status"] == "pending":
-            self._action(lambda: api.complete(tid))
-        elif t["status"] == "done":
-            self._action(lambda: api.uncomplete(tid))
-        else:
+        if t["status"] == "missed":
             self.flash("마감이 지난 일정은 완료 처리할 수 없어요.")
+            return
+        # 낙관적 반영: 서버 응답을 기다리지 않고 먼저 화면을 바꾼다(실패하면 refresh로 복구)
+        local = dict(t)
+        local["status"] = "done" if t["status"] == "pending" else "pending"
+        local["last_completed_at"] = self.model.now().strftime("%Y-%m-%dT%H:%M:%S") if local["status"] == "done" else None
+        self.model.upsert(local)
+        self._update_status()
+        call = api.complete if t["status"] == "pending" else api.uncomplete
+        self._action(lambda: call(tid), self.model.upsert)
 
     def delete(self, t: dict):
         if QMessageBox.question(self, "삭제", f"'{t['title']}' 일정을 삭제할까요?\n(완료 기록도 함께 삭제돼요)") \
                 == QMessageBox.Yes:
             api, tid = self.api, t["id"]
-            self._action(lambda: api.delete(tid), "삭제했어요")
+            self.model.remove(tid)
+            self._update_status()
+            self._action(lambda: api.delete(tid), None, "삭제했어요")
 
     def _context_menu(self, pos):
         ix = self.view.indexAt(pos)
