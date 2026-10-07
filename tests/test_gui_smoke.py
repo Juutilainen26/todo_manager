@@ -77,6 +77,11 @@ def test_ui_flow(stack):
     assert any(t["title"] == "빠른추가" and t["kind"] == "daily" for t in w.model.all)
     # 오프라인: 목록 유지 + 배너
     # 서버가 꺼진 상황: 아무도 듣지 않는 포트로 접속 (운영체제와 상관없이 동일하게 재현됨)
+    # (윈도우는 닫힌 포트의 접속 거절에 2초 이상 걸리므로 고정 대기 대신 최대 10초까지 기다린다)
     w.set_server(f"http://127.0.0.1:{free_port()}")
-    w.refresh(); pump(1.5)
+    w.refresh()
+    deadline = time.time() + 10
+    while w.online and time.time() < deadline:
+        pump(0.2)
+    pump(0.3)
     assert not w.online and not w.banner.isHidden() and len(w.model.rows) == 5
