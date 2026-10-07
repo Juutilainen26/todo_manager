@@ -10,6 +10,7 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6")
 import uvicorn  # noqa: E402
+from PySide6.QtCore import QThreadPool  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from client.api_client import Api  # noqa: E402
@@ -43,6 +44,7 @@ def stack(tmp_path):
             app.processEvents(); time.sleep(0.02)
     yield api, w, pump, srv
     srv.should_exit = True
+    QThreadPool.globalInstance().waitForDone(3000)   # 백그라운드 작업이 끝난 뒤 창을 정리
     w._quitting = True; w.tray.hide(); w.close()
 
 
@@ -74,6 +76,7 @@ def test_ui_flow(stack):
     w.quick.setText("빠른추가"); w.quick_kind.setCurrentIndex(1); w.quick_add(); pump(1.0)
     assert any(t["title"] == "빠른추가" and t["kind"] == "daily" for t in w.model.all)
     # 오프라인: 목록 유지 + 배너
-    srv.should_exit = True; time.sleep(1.5)
+    # 서버가 꺼진 상황: 아무도 듣지 않는 포트로 접속 (운영체제와 상관없이 동일하게 재현됨)
+    w.set_server(f"http://127.0.0.1:{free_port()}")
     w.refresh(); pump(1.5)
     assert not w.online and not w.banner.isHidden() and len(w.model.rows) == 5
