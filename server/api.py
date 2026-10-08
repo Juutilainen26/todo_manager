@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -86,6 +87,11 @@ def create_app(db_path: str = "data/todo.db",
         if not request.url.path.startswith("/api"):
             resp.headers["Cache-Control"] = "no-cache"
         return resp
+
+    # 안드로이드 앱(WebView)은 http://localhost 출처에서 이 서버 API 를 호출한다.
+    # 아무 사이트나 호출하지 못하도록 앱 출처(localhost 계열)만 허용한다.
+    app.add_middleware(CORSMiddleware, allow_origin_regex=r"^(https?|capacitor)://localhost(:\d+)?$",
+                       allow_methods=["*"], allow_headers=["*"], max_age=600)
 
     if WEB_DIR.exists():   # API 라우트 뒤에 마운트해야 /api 가 가려지지 않는다
         app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")

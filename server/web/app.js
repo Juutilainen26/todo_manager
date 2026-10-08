@@ -6,6 +6,11 @@ const WD = ["월", "화", "수", "목", "금", "토", "일"];
 const PAGE = 400;                       // 한 번에 그릴 행 수(대량 목록 대비)
 const LS = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
 
+/* 안드로이드 앱(Capacitor)에서는 화면 파일이 앱 안에 들어 있어서, 데이터는 사용자가 입력한 서버 주소로 받는다.
+   브라우저에서 서버 주소로 직접 열 때는 이전처럼 같은 서버(상대 경로)를 쓴다. */
+const NATIVE = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === "function" && window.Capacitor.isNativePlatform());
+let BASE = NATIVE ? (LS("server") || "") : "";
+
 let tasks = [], offset = 0, tab = "all", q = "", onlyPending = true;
 let online = false, busy = false, again = false, sinceFetch = 0, shown = PAGE, editingId = null, lastFetch = 0;
 
@@ -89,10 +94,11 @@ function visible() {
 
 /* ---------- 서버 통신 ---------- */
 async function api(method, path, body) {
+  if (NATIVE && !BASE) { const err = new Error("offline"); err.offline = true; throw err; }
   const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 7000);
   let r;
   try {
-    r = await fetch(path, { method, signal: ctl.signal, headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
+    r = await fetch(BASE + path, { method, signal: ctl.signal, headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
   } catch (e) { const err = new Error("offline"); err.offline = true; throw err; }
   finally { clearTimeout(to); }
   if (r.status === 204) return null;
@@ -290,5 +296,56 @@ function init() {
   document.addEventListener("visibilitychange", () => { if (!document.hidden) fetchTasks(); });
   fetchTasks();
 }
-document.addEventListener("DOMContentLoaded", init);
+/* ---------- 서버 주소 설정(앱 전용) ---------- */
+function normalizeServer(raw) {
+  let u = (raw || "").trim().replace(/\s+/g, "");
+  if (!u) return "";
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(u)) u = "http://" + u;
+  const m = u.match(/^(https?:\/\/)([^/?#]+)/i);
+  if (!m) return "";
+  let host = m[2];
+  if (m[1].toLowerCase() === "http://" && !/:\d+$/.test(host)) host += ":8765";
+  return m[1].toLowerCase() + host;
+}
+function showSetup(first) {
+  $("#s-url").value = BASE.replace(/^http:\/\//, "");
+  $("#s-msg").textContent = ""; $("#s-force").hidden = true;
+  $("#s-cancel").hidden = !!first;
+  $("#setup").hidden = false;
+  setTimeout(() => $("#s-url").focus(), 50);
+}
+async function trySetup(force) {
+  const url = normalizeServer($("#s-url").value);
+  if (!url) { $("#s-msg").textContent = "주소를 입력해 주세요."; return; }
+  if (!force) {
+    $("#s-ok").disabled = true; $("#s-msg").textContent = "연결 확인 중…";
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 6000);
+    try {
+      const r = await fetch(url + "/api/health", { signal: ctl.signal });
+      const j = await r.json();
+      if (!r.ok || j.ok !== true) throw new Error("bad");
+    } catch (e) {
+      $("#s-ok").disabled = false;
+      $("#s-msg").textContent = "연결하지 못했어요. 서버 PC에서 서버를 켰는지, 폰의 Tailscale이 켜져 있는지, 주소가 맞는지 확인해 주세요.";
+      $("#s-force").hidden = false;
+      return;
+    } finally { clearTimeout(to); }
+  }
+  $("#s-ok").disabled = false;
+  if (url !== BASE) LS("cache", "");          // 다른 서버로 바꾸면 이전 서버의 저장 목록은 버린다
+  BASE = url; LS("server", url);
+  $("#setup").hidden = true;
+  tasks = []; render(); fetchTasks();
+  toast("서버 주소를 저장했어요", 1600);
+}
+function initNative() {
+  if (!NATIVE) return;
+  $("#gear").hidden = false;
+  $("#gear").addEventListener("click", () => showSetup(false));
+  $("#setup").addEventListener("submit", e => { e.preventDefault(); trySetup(false); });
+  $("#s-force").addEventListener("click", () => trySetup(true));
+  $("#s-cancel").addEventListener("click", () => { $("#setup").hidden = true; });
+  if (!BASE) showSetup(true);
+}
+document.addEventListener("DOMContentLoaded", () => { initNative(); init(); });
 })();

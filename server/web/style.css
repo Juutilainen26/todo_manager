@@ -64,3 +64,9 @@ button.danger{color:var(--danger)}
 .err{color:var(--danger);min-height:1em;margin:0;font-size:13px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(110px + env(safe-area-inset-bottom));background:#262b38;color:#fff;
   padding:9px 14px;border-radius:20px;font-size:13px;z-index:20;max-width:88%}
+
+.setup{position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px}
+.setup-card{width:100%;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+.setup-card h2{margin:0 0 6px;font-size:18px}
+.setup-card .hint{color:var(--sub);line-height:1.5;margin:0 0 12px;font-size:14px}
+.setup-card input{width:100%}

@@ -1,0 +1,9 @@
+{
+  "appId": "app.todomanager.personal",
+  "appName": "일정 관리",
+  "webDir": "www",
+  "backgroundColor": "#F5F6F8",
+  "server": {
+    "androidScheme": "http"
+  }
+}

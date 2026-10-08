@@ -40,3 +40,18 @@ def test_validation_errors(env):
     assert c.post("/api/tasks", json={"title": "", "kind": "daily"}).status_code == 422
     assert c.post("/api/tasks", json={"title": "a", "kind": "weekly"}).status_code == 422
     assert c.patch("/api/tasks/999", json={"title": "x"}).status_code == 404
+
+
+def test_cors_only_for_app_origins(env):
+    """앱(WebView, http://localhost)만 허용하고 임의 사이트는 허용하지 않는다."""
+    c, _ = env
+    ok = c.options("/api/tasks", headers={"Origin": "http://localhost", "Access-Control-Request-Method": "POST",
+                                            "Access-Control-Request-Headers": "content-type"})
+    assert ok.status_code == 200 and ok.headers["access-control-allow-origin"] == "http://localhost"
+    assert "PATCH" in ok.headers["access-control-allow-methods"] or "*" in ok.headers["access-control-allow-methods"]
+    bad = c.options("/api/tasks", headers={"Origin": "https://evil.example", "Access-Control-Request-Method": "POST"})
+    assert "access-control-allow-origin" not in bad.headers
+    g = c.get("/api/health", headers={"Origin": "https://evil.example"})
+    assert "access-control-allow-origin" not in g.headers
+    g = c.get("/api/health", headers={"Origin": "http://localhost:5555"})
+    assert g.headers["access-control-allow-origin"] == "http://localhost:5555"

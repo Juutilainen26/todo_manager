@@ -7,3 +7,11 @@ build/
 dist/
 *.spec
 data/
+
+# 안드로이드 앱 (빌드할 때마다 새로 생성되는 것들)
+android_app/node_modules/
+android_app/android/
+android_app/www/
+# 서명 키는 절대 저장소에 올리지 않는다
+*.jks
+*.keystore
