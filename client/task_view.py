@@ -31,7 +31,7 @@ class TaskModel(QAbstractListModel):
         self.offset = timedelta(0)  # 서버 시각 - 이 PC 시각
         self.tab = TAB_ALL
         self.text = ""
-        self.only_pending = False
+        self.only_pending = True   # 기본: 진행 중인 일정만 표시(완료/마감 초과는 숨김)
 
     # ---- 시간
     def now(self) -> datetime:

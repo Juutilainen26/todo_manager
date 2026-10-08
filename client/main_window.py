@@ -126,6 +126,7 @@ class MainWindow(QMainWindow):
             self.tabs.addTab(n)
         self.search = QLineEdit(); self.search.setPlaceholderText("검색"); self.search.setFixedWidth(150)
         self.only_pending = QCheckBox("진행 중만")
+        self.only_pending.setChecked(self.model.only_pending)   # 처음 열 때 기본 체크
         row = QHBoxLayout(); row.addWidget(self.tabs); row.addStretch()
         row.addWidget(self.search); row.addWidget(self.only_pending)
         lay.addLayout(row)

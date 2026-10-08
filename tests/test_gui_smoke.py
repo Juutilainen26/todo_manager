@@ -57,7 +57,12 @@ def test_ui_flow(stack):
     api.create({"title": "지난D", "kind": "once", "due_at": (now + timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%S")})
     time.sleep(1.5)
     w.refresh(); pump(1.5)
-    assert w.online and len(w.model.rows) == 4
+    assert w.online
+    # 처음 열었을 때 기본값: '진행 중만' 체크 -> 마감 초과(지난D)는 숨겨진다
+    assert w.only_pending.isChecked()
+    assert sorted(t["title"] for t in w.model.rows) == ["매일A", "미래C", "주간B"]
+    w.only_pending.setChecked(False); pump(0.2)     # 해제하면 전체가 보인다
+    assert len(w.model.rows) == 4
     # 마감 초과는 완료 불가 + 목록 맨 아래
     assert w.model.rows[-1]["title"] == "지난D" and w.model.rows[-1]["status"] == "missed"
     # 완료 토글
