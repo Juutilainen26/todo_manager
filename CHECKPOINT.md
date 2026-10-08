@@ -9,11 +9,18 @@
 - 4~5단계: 빌드_클라이언트.bat(PyInstaller), GitHub Actions(윈도우 exe 자동 빌드), .gitignore
 - 6단계: README, 최종 점검, 파일을 사용자 PC 폴더로 복사
 
-## [최종 업데이트] 4~6단계 완료 (v1 완성)
-- [x] 빌드_클라이언트.bat (PyInstaller onedir), github_build_workflow.yml(→ .github/workflows/build.yml 로 옮겨 사용), README.md
-- [x] 전체 테스트 28 passed (서버/API/유틸/UI 통합). PC 폴더에서는 UI 제외 27 passed
-- [x] 성능(5000건): HTTP ~250ms(gzip 적용), 화면 반영 ~40ms
-- 아직 실제 윈도우에서 해보지 않은 것: exe 빌드, Tailscale 경유 접속, 윈도우 토스트 알림 -> 사용 후 피드백으로 UI/동작 수정
-## 다음에 할 것 (사용 후)
-- 사용감 기반 UI 수정(client/style.py, task_view.py 위주)
-- 필요 시: 폰용 웹 화면, 완료 이력/통계 화면
+---
+## 모바일(안드로이드) 확장 진행 상황 (2026-10-08)
+
+### 지금까지 완료
+- 1단계: 서버가 `/` 에서 모바일 웹 UI 제공 (server/web/: index.html, style.css, app.js, manifest, 아이콘)
+  - 기본값 "진행 중만" 체크, 낙관적 UI, 오프라인 배너, 하단 시트 폼, 두 번 탭 삭제
+- 2단계: 폰 크기(390x844) E2E 테스트 통과 (`SHOTS=/tmp/shots python3 tests/e2e_mobile.py`, Playwright 필요)
+- 데스크톱: 알림 3일 전 / 24시간 전만, 매일 할일 제외, 기본 "진행 중만" (v1.0.3 태그는 사용자가 push 후 진행)
+
+### 다음에 이어서 할 것
+- 사용자가 폰 브라우저로 `http://<서버 Tailscale IP>:8765` 접속해 써보고 피드백
+- 3단계: Capacitor APK 껍데기 + GitHub Actions 빌드/Releases 첨부
+  - 서명 키(.jks)와 비밀번호는 사용자가 직접 만들어 GitHub Secrets에 등록 (Claude는 방법만 안내)
+  - workflow 파일은 `.github` 보호 경로라서 다른 이름으로 전달 → 사용자가 이동
+- 4단계: 폰 알림 (3일 전 1회 / 24시간 전 완료될 때까지 유지 + 약 3시간마다 재알림, 매일 할일 제외)

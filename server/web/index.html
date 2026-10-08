@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#4C6FFF">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>일정 관리</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" href="/icon-192.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <div class="top">
+    <h1>일정 관리</h1>
+    <span id="conn" class="conn" title="연결 상태">●</span>
+    <button id="refresh" class="icon-btn" aria-label="새로고침">⟳</button>
+  </div>
+  <form id="quick" class="quick" autocomplete="off">
+    <input id="quick-title" placeholder="할 일 입력 후 Enter" enterkeyhint="done">
+    <select id="quick-kind" aria-label="종류">
+      <option value="today">오늘</option>
+      <option value="daily">매일</option>
+      <option value="weekly">주간</option>
+      <option value="future">앞으로</option>
+    </select>
+    <button class="primary" type="submit">추가</button>
+  </form>
+  <nav id="tabs" class="tabs">
+    <button data-tab="all" class="on">전체</button>
+    <button data-tab="today">오늘</button>
+    <button data-tab="daily">매일</button>
+    <button data-tab="weekly">주간</button>
+    <button data-tab="upcoming">앞으로</button>
+  </nav>
+  <div class="filters">
+    <input id="search" type="search" placeholder="검색">
+    <label class="chk"><input id="only-pending" type="checkbox" checked> 진행 중만</label>
+  </div>
+</header>
+
+<div id="banner" class="banner" hidden>서버에 연결할 수 없어요. 서버 PC에서 서버를 실행했는지, Tailscale이 켜져 있는지 확인해 주세요. (저장된 마지막 목록을 보여드리는 중)</div>
+<main id="list" class="list" aria-live="polite"></main>
+<footer id="status" class="status"></footer>
+<button id="fab" class="fab" aria-label="자세히 추가">＋</button>
+
+<div id="sheet-bg" class="sheet-bg" hidden></div>
+<form id="sheet" class="sheet" hidden autocomplete="off">
+  <h2 id="sheet-title">일정 추가</h2>
+  <label>제목<input id="f-title" required></label>
+  <label>메모<textarea id="f-note" rows="2" placeholder="선택"></textarea></label>
+  <label>종류
+    <select id="f-kind">
+      <option value="daily">매일 반복</option>
+      <option value="weekly">매주 반복</option>
+      <option value="once">한 번만(마감일)</option>
+    </select>
+  </label>
+  <div id="g-weekly" class="row2">
+    <label>초기화 요일<select id="f-rwd"></select></label>
+  </div>
+  <div id="g-rec">
+    <label>초기화 시각<input id="f-rt" type="time" value="00:00"></label>
+    <label class="chk"><input id="f-usedue" type="checkbox"> 마감 시각 지정 <small>(안 하면 다음 초기화 시점이 마감)</small></label>
+    <div id="g-due" class="row2">
+      <label id="g-dwd">마감 요일<select id="f-dwd"></select></label>
+      <label>마감 시각<input id="f-dt" type="time" value="22:00"></label>
+    </div>
+  </div>
+  <div id="g-once">
+    <label class="chk"><input id="f-useonce" type="checkbox"> 마감일 지정</label>
+    <label id="g-onceval">마감<input id="f-due" type="datetime-local"></label>
+  </div>
+  <p id="f-err" class="err"></p>
+  <div class="btns">
+    <button type="button" id="f-del" class="danger" hidden>삭제</button>
+    <span class="grow"></span>
+    <button type="button" id="f-cancel">취소</button>
+    <button type="submit" class="primary">저장</button>
+  </div>
+</form>
+<div id="toast" class="toast" hidden></div>
+<script src="/app.js"></script>
+</body>
+</html>

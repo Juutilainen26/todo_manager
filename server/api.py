@@ -2,16 +2,19 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from typing import Callable, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import core
 from .db import NotCompletable, NotFound, Repo
 
 API_VERSION = 1
+WEB_DIR = Path(__file__).resolve().parent / "web"   # 모바일 웹 화면(정적 파일)
 
 
 class TaskIn(BaseModel):
@@ -75,5 +78,16 @@ def create_app(db_path: str = "data/todo.db",
     @app.post("/api/tasks/{task_id}/uncomplete")
     def uncomplete_task(task_id: int):
         return guard(repo.uncomplete, task_id, now())
+
+    @app.middleware("http")
+    async def no_cache_for_web(request, call_next):
+        """화면 파일은 항상 최신본을 쓰도록(서버만 업데이트하면 폰에도 바로 반영)."""
+        resp = await call_next(request)
+        if not request.url.path.startswith("/api"):
+            resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+    if WEB_DIR.exists():   # API 라우트 뒤에 마운트해야 /api 가 가려지지 않는다
+        app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")
 
     return app
